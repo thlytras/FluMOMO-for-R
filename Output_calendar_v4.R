@@ -1,23 +1,22 @@
-### Graphs - calendar time ###
+# ## Graphs - calendar time ##
 require(ggplot2, quietly=T)
 
-if (IArest == 1) {
-  results4 <- read.table(file=paste0(outdir,"/",country,"_output_V4_IArestricted.csv"), header = T, sep =";", dec=".")
-  results4$EIA = results4$EB + pmax(0,results4$EdIA)
-  results4$EIAET = results4$EB + pmax(0,results4$EdIA) + results4$EdET
-  note = "Note: Negative effects of IA are not shown"
-}
-if (IArest != 1) {
-  results4 <- read.table(file=paste0(outdir,"/",country,"_output_V4.csv"), header = T, sep =";", dec=".")
-  results4$EIA = results4$EB + results4$EdIA
-  results4$EIAET = results4$EB + results4$EdIA + results4$EdET
-  note = ""
+if (IArest) {
+  results4 <- read.table(file=paste0(outdir,"/",country,"_output_v4_IArestricted.csv"), header = TRUE, sep =";", dec=".")
+  results4$EIA <- results4$EB + pmax(0,results4$EdIA)
+  results4$EIAET <- results4$EB + pmax(0,results4$EdIA) + results4$EdET
+  note <- "Note: Negative effects of IA are not shown"
+} else {
+  results4 <- read.table(file=paste0(outdir,"/",country,"_output_v4.csv"), header = TRUE, sep =";", dec=".")
+  results4$EIA <- results4$EB + results4$EdIA
+  results4$EIAET <- results4$EB + results4$EdIA + results4$EdET
+  note <- ""
 }
 results4 <- results4[with(results4, order(agegrp, year, week)),]
-results4$wk <- unlist(tapply(results4$agegrp,results4$agegrp,function(x) seq(1,length(x),1)))
-results4$agegrp.labels <- ordered(results4$agegrp, labels = c("0-4 years","5-14 years","15-64 years","Aged 65","Total"))
-results4$yw = paste0(sprintf("%04.0f",results4[,"year"]),"w",sprintf("%02.0f",results4[,"week"]))
-#results4$wk.labels = ordered(results4$wk, labels = unique(results4$yw))
+results4$wk <- unlist(lapply(table(results4$agegrp), seq))
+results4$agegrp.labels <- ordered(results4$agegrp, 
+    labels = c("0-4 years","5-14 years","15-64 years","Aged 65","Total"))
+results4$yw <- sprintf("%04dw%02d", results4$year, results4$week)
 
 ggplot(data = results4, aes(wk,EB)) +
   geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
@@ -38,8 +37,10 @@ ggplot(data = results4, aes(wk,EB)) +
         plot.title = element_text(hjust = 0.5, vjust=2),
         plot.caption = element_text(hjust = 0.5, vjust=2)) +
   facet_wrap( ~ agegrp.labels, nrow = 5, scales = "free_y")
-if (IArest == 1) { ggsave(paste0(outdir,"/deaths_agegroups_V4_IArestricted.png"), width = 20, height = 30, units = "cm") }
-if (IArest != 1) { ggsave(paste0(outdir,"/deaths_agegroups_V4.png"), width = 20, height = 30, units = "cm") }
+ggsave(paste0(outdir,"/deaths_agegroups_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
+    width = 20, height = 30, units = "cm")
+
+
 for (a in 0:4) {
   ggplot(data = results4[(results4$agegrp==a),], aes(wk,EB)) +
     geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
@@ -58,13 +59,15 @@ for (a in 0:4) {
           panel.background = element_rect(fill = NA),
           panel.grid.major = element_line(colour = "grey90"),
           plot.title = element_text(hjust = 0.5, vjust=2),
-          plot.caption = element_text(hjust = 0.5, vjust=2)) +
-  if (IArest == 1) { ggsave(paste0(outdir,"/deaths_agegroup_",a,"_V4_IArestricted.png"), width = 40, height = 20, units = "cm") }
-  if (IArest != 1) { ggsave(paste0(outdir,"/deaths_agegroup_",a,"_V4.png"), width = 40, height = 20, units = "cm") }
+          plot.caption = element_text(hjust = 0.5, vjust=2))
+  
+  ggsave(paste0(outdir, "/deaths_agegroup_", a, "_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
+      width = 40, height = 20, units = "cm")
 }
 
-if (population == 1) {
-  results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")] <- 100000*results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")]/results4[,"N"]
+if (population) {
+  results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")] <- 
+      100000 * results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")] / results4[,"N"]
   ggplot(data = results4, aes(wk,EB)) +
     geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
     geom_line(aes(y = EIAET), colour = "darkgreen", na.rm = T) +
@@ -83,9 +86,10 @@ if (population == 1) {
           panel.grid.major = element_line(colour = "grey90"),
           plot.title = element_text(hjust = 0.5, vjust=2),
           plot.caption = element_text(hjust = 0.5, vjust=2)) +
-  facet_wrap( ~ agegrp.labels, nrow = 5, scales = "free_y")
-  if (IArest == 1) { ggsave(paste0(outdir,"/mr_agegroups_V4_IArestricted.png"), width = 20, height = 30, units = "cm") }
-  if (IArest != 1) { ggsave(paste0(outdir,"/mr_agegroups_V4.png"), width = 20, height = 30, units = "cm") }
+    facet_wrap( ~ agegrp.labels, nrow = 5, scales = "free_y")
+  ggsave(paste0(outdir,"/mr_agegroups_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
+    width = 20, height = 30, units = "cm")
+  
   for (a in 0:4) {
     ggplot(data = results4[(results4$agegrp==a),], aes(wk,EB)) +
       geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
@@ -104,9 +108,9 @@ if (population == 1) {
             panel.background = element_rect(fill = NA),
             panel.grid.major = element_line(colour = "grey90"),
             plot.title = element_text(hjust = 0.5, vjust=2),
-            plot.caption = element_text(hjust = 0.5, vjust=2)) +
-    if (IArest == 1) { ggsave(paste0(outdir,"/mr_agegroup_",a,"_V4_IArestricted.png"), width = 40, height = 20, units = "cm") }
-    if (IArest != 1) { ggsave(paste0(outdir,"/mr_agegroup_",a,"_V4.png"), width = 40, height = 20, units = "cm") }
+            plot.caption = element_text(hjust = 0.5, vjust=2))
+    ggsave(paste0(outdir,"/mr_agegroup", a, "_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
+        width = 20, height = 30, units = "cm")
   }
 }
 rm(results4, a, note)

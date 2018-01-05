@@ -1,15 +1,14 @@
 #install.packages("ggplot2")
 require(ggplot2, quietly=T)
 
-### Ambient temperatures ###
+# ## Ambient temperatures ##
 ET <- read.table(file=paste0(indir,"/temperature.csv"), header = T, sep =";", dec=".")
 ET <- ET[with(ET, order(year, week)),]
-ET <- within(ET, paste(
-  Uexecc <- pmax(ptmax,temp),
-  Lexecc <- pmin(ptmin,temp),
-  wk <- 1:length(temp)
-))
-ET$yw = paste0(sprintf("%04.0f",ET[,"year"]),"w",sprintf("%02.0f",ET[,"week"]))
+ET$Uexecc <- with(ET, pmax(ptmax,temp))
+ET$Lexecc <- with(ET, pmin(ptmin,temp))
+ET$wk <- 1:nrow(ET)
+ET$yw <- sprintf("%04iw%02d", ET$year, ET$week)
+
 
 ggplot(data = ET, aes(wk,temp)) +
   geom_ribbon(aes(x=wk, ymax=ptmax, ymin=Uexecc), fill="red", alpha=.5, na.rm = T) +
@@ -32,16 +31,16 @@ ggplot(data = ET, aes(wk,temp)) +
 ggsave(paste0(outdir,"/temperature_v4R.png"), width = 40, height = 20, units = "cm")
 rm(ET)
 
-### Influenza Activity ###
+# ## Influenza Activity ##
 
-if (IArest == 1) { results4 <- read.table(file=paste0(outdir,"/",country,"_output_v4_IArestricted.csv"), header = T, sep =";", dec=".") }
-if (IArest != 1) { results4 <- read.table(file=paste0(outdir,"/",country,"_output_v4.csv"), header = T, sep =";", dec=".") }
-
+results4 <- read.table(
+    file = paste0(outdir, "/", country, "_output_v4", ifelse(IArest, "_IArestricted", ""), ".csv"), 
+    header = TRUE, sep =";", dec=".") 
 results4 <- results4[with(results4, order(agegrp, year, week)),]
-results4$wk <- unlist(tapply(results4$agegrp,results4$agegrp,function(x) seq(1,length(x),1)))
-results4$agegrp.labels <- ordered(results4$agegrp, labels = c("0-4 years","5-14 years","15-64 years","Aged 65","Total"))
-results4$yw = paste0(sprintf("%04.0f",results4[,"year"]),"w",sprintf("%02.0f",results4[,"week"]))
-#results4$wk.labels = ordered(results4$wk, labels = unique(results4$yw))
+results4$wk <- unlist(lapply(table(results4$agegrp), seq))
+results4$agegrp.labels <- ordered(results4$agegrp, 
+    labels = c("0-4 years", "5-14 years", "15-64 years", "Aged 65", "Total"))
+results4$yw <- sprintf("%04iw%02d", results4$year, results4$week)
 
 ggplot(data = results4, aes(wk,IA)) +
   geom_line(aes(y = IA), colour = "red", na.rm = T) +
