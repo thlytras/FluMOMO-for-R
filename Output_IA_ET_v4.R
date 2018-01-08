@@ -1,5 +1,3 @@
-#install.packages("ggplot2")
-require(ggplot2, quietly=T)
 
 # ## Ambient temperatures ##
 ET <- read.table(file=paste0(indir,"/temperature.csv"), header = T, sep =";", dec=".")
@@ -10,26 +8,34 @@ ET$wk <- 1:nrow(ET)
 ET$yw <- sprintf("%04iw%02d", ET$year, ET$week)
 
 
-ggplot(data = ET, aes(wk,temp)) +
-  geom_ribbon(aes(x=wk, ymax=ptmax, ymin=Uexecc), fill="red", alpha=.5, na.rm = T) +
-  geom_ribbon(aes(x=wk, ymax=ptmin, ymin=Lexecc), fill="blue", alpha=.5, na.rm = T) +
-  geom_point(aes(y = temp), colour = "black", na.rm = T) +
-  geom_line(aes(y = ptemp), colour = "black", linetype = 1, na.rm = T) +
-  geom_line(aes(y = ptmin), colour = "blue", linetype = 1, na.rm = T) +
-  geom_line(aes(y = ptmax), colour = "red", linetype = 1, na.rm = T) +
-  xlab("year-week") + ylab("Degree Celsius") + ggtitle("Ambient temperatures") +
-  labs(caption = "dot: observed temperature   black line: expected temperature
-       red: line - max expected temperature   area - extreme heat
-       blue: line - min expected temperature   area - extreme cold") +
-  scale_x_continuous(breaks=seq(1, max(ET$wk), 26), labels = unique(ET$yw)[seq(1, max(ET$wk), 26)]) +
-  theme(axis.text.x = element_text(size = 10, angle = 90),
-        axis.line = element_line(colour = "black", size = 0.6),
-        panel.background = element_rect(fill = NA),
-        panel.grid.major = element_line(colour = "grey90"),
-        plot.title = element_text(hjust = 0.5, vjust=2),
-        plot.caption = element_text(hjust = 0.5, vjust=2))
-ggsave(paste0(outdir,"/temperature_v4R.png"), width = 40, height = 20, units = "cm")
+png(paste0(outdir,"/temperature_v4R.png"), width=1200, height=800, res=130)
+par(mar=c(9,4,3,2))
+with(ET, {
+  plot(x=wk, y=temp, type="n", xlab=NA, ylab="Degree Celsius", 
+      main="Ambient temperatures", bty="l", xaxt="n")
+  axis(1, at=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], 
+      labels=yw[as.integer(substr(yw,6,7)) %in% c(1,27)], las=2, cex.axis=0.9)
+  polygon(x=c(wk,rev(wk)), y=c(Uexecc, rev(ptmax)),
+    border=do.call(rgb, c(as.list(col2rgb("red")/255), alpha=0.5)),
+    col=do.call(rgb, c(as.list(col2rgb("red")/255), alpha=0.5)))
+  polygon(x=c(wk,rev(wk)), y=c(Lexecc, rev(ptmin)),
+    border=do.call(rgb, c(as.list(col2rgb("blue")/255), alpha=0.5)),
+    col=do.call(rgb, c(as.list(col2rgb("blue")/255), alpha=0.5)))
+  points(x=wk, y=ptemp, type="l", col="black")
+  points(x=wk, y=ptmin, type="l", col="blue")
+  points(x=wk, y=ptmax, type="l", col="red")
+  points(x=wk, y=temp, pch=19, cex=0.7)
+  mtext("Year-week", side=1, line=4.5)
+  legend("bottom", c("expected temperature", "max expected temperature", "min expected temperature"),
+    lty="solid", col=c("black", "red", "blue"), lwd=2,
+    horiz=TRUE, inset=c(0,-0.39), xpd=NA, bty="n", cex=1)
+  legend("bottom", c("observed temperature", "extreme heat", "extreme cold"),
+    col=c("black", do.call(rgb, c(as.list(col2rgb("blue")/255), alpha=0.5)), do.call(rgb, c(as.list(col2rgb("red")/255), alpha=0.5))), pch=c(19,15,15),
+    horiz=TRUE, inset=c(0,-0.46), xpd=NA, bty="n", cex=1, pt.cex=c(1,2,2))  
+})
+dev.off()
 rm(ET)
+
 
 # ## Influenza Activity ##
 
@@ -42,24 +48,40 @@ results4$agegrp.labels <- ordered(results4$agegrp,
     labels = c("0-4 years", "5-14 years", "15-64 years", "Aged 65", "Total"))
 results4$yw <- sprintf("%04iw%02d", results4$year, results4$week)
 
-ggplot(data = results4, aes(wk,IA)) +
-  geom_line(aes(y = IA), colour = "red", na.rm = T) +
-  labs(x = "year-week", y = "Influenza Activity per week", title = "Influenza Activity by age group") +
-  scale_x_continuous(breaks=seq(1, max(results4$wk), 26), labels = unique(results4$yw)[seq(1, max(results4$wk), 26)]) +
-  theme(axis.text.x = element_text(size = 10, angle = 90),
-        axis.line = element_line(colour = "black", size = 0.6),
-        panel.background = element_rect(fill = NA),
-        panel.grid.major = element_line(colour = "grey90")) +
-  facet_wrap( ~ agegrp.labels, nrow = 5, scales = "free_y")
-ggsave(paste0(outdir,"/IA_agegroups_v4R.png"), width = 20, height = 30, units = "cm")
+
+png(paste0(outdir,"/IA_agegroups_v4R.png"), width=1200, height=1600, res=130)
+par(mar=c(3,4,2,2), oma=c(5,2,2,0), mfrow=c(5,1))
+for (a in 0:4)
+  with(results4[(results4$agegrp==a),], {
+    plot(x=wk, y=IA, xaxt="n", ylab=NA, xlab=NA, type="n", bty="l", 
+        main=unique(results4$agegrp.labels)[a+1])
+    if (a==4) {
+      axis(1, at=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], 
+          labels=yw[as.integer(substr(yw,6,7)) %in% c(1,27)], las=2, cex.axis=0.9)
+    }
+    grid(nx=NA, ny=NULL)
+    abline(v=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], col="lightgray", lty="dotted")
+    points(x=wk, y=IA, col="red", lwd=2, type="l")
+  })
+mtext("Influenza Activity per week", side=2, outer=TRUE)
+mtext("Influenza Activity by age group", side=3, outer=TRUE, adj=0, cex=1.2)
+mtext("year-week", side=1, line=5)
+dev.off()
+
+
 for (a in 0:4) {
-  ggplot(data = results4[(results4$agegrp==a),], aes(wk,IA)) +
-    geom_line(aes(y = IA), colour = "red", na.rm = T) +
-    labs(x = "year-week", y = "Influenza Activity per week", title = paste("Influenza Activity, age group:",unique(results4$agegrp.labels)[a+1])) +
-    scale_x_continuous(breaks=seq(1, max(results4$wk), 26), labels = unique(results4$yw)[seq(1, max(results4$wk), 26)]) +
-    theme(axis.text.x = element_text(size = 10, angle = 90),
-          axis.line = element_line(colour = "black", size = 0.6),
-          panel.background = element_rect(fill = NA),
-          panel.grid.major = element_line(colour = "grey90"))
-    ggsave(paste0(outdir,"/IA_agegroup_",a,"_v4R.png"), width = 40, height = 20, units = "cm")
+  png(paste0(outdir,"/IA_agegroup_",a,"_v4R.png"), width=1200, height=800, res=130)
+  par(mar=c(6,4,4,2))
+    with(results4[(results4$agegrp==a),], {
+      plot(x=wk, y=IA, xaxt="n", ylab="Influenza Activity per week", xlab=NA, type="n", bty="l")
+      axis(1, at=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], 
+          labels=yw[as.integer(substr(yw,6,7)) %in% c(1,27)], las=2, cex.axis=0.9)
+      grid(nx=NA, ny=NULL)
+      abline(v=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], col="lightgray", lty="dotted")
+      mtext(paste("Influenza Activity, age group:",unique(results4$agegrp.labels)[a+1]), 
+          side=3, line=1, adj=0)
+      points(x=wk, y=IA, col="red", lwd=2, type="l")
+      mtext("year-week", side=1, line=4.5)
+    })
+  dev.off()
 }

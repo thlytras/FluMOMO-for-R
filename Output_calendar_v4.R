@@ -1,5 +1,4 @@
 # ## Graphs - calendar time ##
-require(ggplot2, quietly=T)
 
 if (IArest) {
   results4 <- read.table(file=paste0(outdir,"/",country,"_output_v4_IArestricted.csv"), header = TRUE, sep =";", dec=".")
@@ -18,99 +17,94 @@ results4$agegrp.labels <- ordered(results4$agegrp,
     labels = c("0-4 years","5-14 years","15-64 years","Aged 65","Total"))
 results4$yw <- sprintf("%04dw%02d", results4$year, results4$week)
 
-ggplot(data = results4, aes(wk,EB)) +
-  geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
-  geom_line(aes(y = EIAET), colour = "darkgreen", na.rm = T) +
-  geom_line(aes(y = EIA), colour = "red", na.rm = T) +
-  geom_line(aes(y = EB), colour = "black", linetype = 1, na.rm = T) +
-  geom_line(aes(y = EB_95L), colour = "black", linetype = 2, na.rm = T) +
-  geom_line(aes(y = EB_95U), colour = "black", linetype = 2, na.rm = T) +
-  labs(x = "year-week", y = "deaths per week", title = "Number of deaths by age group") +
-  labs(caption = paste("Black line: baseline, dotted black line: 95% confidence interval",
-       "Red: Effect of Influenza Activity (IA)",
-       "Green: Effect of excess temperature (on top of IA)", note, sep = "\n")) +
-  scale_x_continuous(breaks=seq(1, max(results4$wk), 26), labels = unique(results4$yw)[seq(1, max(results4$wk), 26)]) +
-  theme(axis.text.x = element_text(size = 10, angle = 90),
-        axis.line = element_line(colour = "black", size = 0.6),
-        panel.background = element_rect(fill = NA),
-        panel.grid.major = element_line(colour = "grey90"),
-        plot.title = element_text(hjust = 0.5, vjust=2),
-        plot.caption = element_text(hjust = 0.5, vjust=2)) +
-  facet_wrap( ~ agegrp.labels, nrow = 5, scales = "free_y")
-ggsave(paste0(outdir,"/deaths_agegroups_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
-    width = 20, height = 30, units = "cm")
+
+plotDeaths <- function(a, mortality=FALSE, annot=TRUE) {
+  if (mortality) {
+    results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")] <- 
+      100000 * results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")] / results4[,"N"]
+  }
+  with(results4[(results4$agegrp==a),], {
+    plot(wk, EB, type="n", xaxt="n", bty="l", xlab=NA, ylab=NA, 
+        ylim=range(pretty(range(c(EIAET, EIA, EB_95U, EB_95L)))))
+    if (annot) {
+      axis(1, at=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], 
+          labels=yw[as.integer(substr(yw,6,7)) %in% c(1,27)], las=2, cex.axis=0.9)
+    }
+    grid(nx=NA, ny=NULL)
+    abline(v=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], col="lightgray", lty="dotted")
+    polygon(x=c(wk,rev(wk)), y=c(deaths,rev(EB)), 
+      col=do.call(rgb, c(as.list(col2rgb("gray")/255), alpha=0.7)),
+      border=do.call(rgb, c(as.list(col2rgb("gray")/255), alpha=0.7)))
+    points(wk, EIAET, col="darkgreen", lwd=2, type="l")
+    points(wk, EIA, col="red", lwd=2, type="l")
+    points(wk, EB, lwd=2, type="l")
+    points(wk, EB_95L, lty="dashed", lwd=2, type="l")
+    points(wk, EB_95U, lty="dashed", lwd=2, type="l")
+  })
+  if (annot) {
+    mtext(sprintf("FluMOMO v4 - week %s, %s", end_week, end_year), side=3, line=1, adj=1, cex=0.8)
+    mtext("year-week", side=1, line=4.5)
+    if (mortality) {
+      mtext(paste("Mortality by age group:",unique(results4$agegrp.labels)[a+1]), side=3, line=1, adj=0, cex=1.2)
+      mtext("Deaths / 100.000 per week", side=2, line=2.5)
+    } else {
+      mtext(paste("Number of deaths, age group:",unique(results4$agegrp.labels)[a+1]), side=3, line=1, adj=0, cex=1.2)
+      mtext("Number of deaths per week", side=2, line=2.5)
+    }
+    legend("bottom", c("Effect of Influenza Activity (IA)",
+        "Effect of excess temperature (on top of IA)", "Baseline", "95% confidence interval"), 
+        lwd=2, col=c("red","darkgreen","black","black"), lty=c(rep("solid",3),"dashed"), 
+        bty="n", ncol=2, xpd=NA, inset=c(0,-0.5), seg.len=4)
+  }
+}
 
 
+plotDeathsMultiple <- function(mortality=FALSE) {
+  par(mar=c(3,2,3,2), mfrow=c(5,1), oma=c(8,3.5,3,0))
+  for(a in 0:4) {
+    plotDeaths(a, mortality=mortality, annot=FALSE)
+    mtext(unique(results4$agegrp.labels)[a+1], side=3, line=1)
+    if (a==4) {
+      with(results4[(results4$agegrp==a),], 
+        axis(1, at=wk[as.integer(substr(yw,6,7)) %in% c(1,27)], 
+          labels=yw[as.integer(substr(yw,6,7)) %in% c(1,27)], las=2))
+    }
+  }
+  mtext(sprintf("FluMOMO v4 - week %s, %s", end_week, end_year), side=3, line=0, adj=0.9, cex=0.8, outer=TRUE)
+  mtext("year-week", side=1, line=5)
+  if (mortality) {
+    mtext("Mortality by age group", side=3, line=0, adj=0, cex=1.2, outer=TRUE)
+    mtext("Deaths / 100.000 per week", side=2.5, line=1, outer=TRUE)
+  } else {
+    mtext("Number of deaths by age group", side=3, line=0, adj=0, cex=1.2, outer=TRUE)
+    mtext("Number of deaths per week", side=2.5, line=1, outer=TRUE)
+  }
+  legend("bottom", c("Effect of Influenza Activity (IA)",
+      "Effect of excess temperature (on top of IA)", "Baseline", "95% confidence interval"), 
+      lwd=2, col=c("red","darkgreen","black","black"), lty=c(rep("solid",3),"dashed"), 
+      bty="n", ncol=2, xpd=NA, inset=c(0,-0.9), seg.len=4)
+}
+
+
+png(paste0(outdir,"/deaths_agegroups_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=1600, res=130)
+plotDeathsMultiple(mortality=FALSE)
+dev.off()
 for (a in 0:4) {
-  ggplot(data = results4[(results4$agegrp==a),], aes(wk,EB)) +
-    geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
-    geom_line(aes(y = EIAET), colour = 'darkgreen', na.rm = T) +
-    geom_line(aes(y = EIA), colour = 'red', na.rm = T) +
-    geom_line(aes(y = EB), colour = "black", linetype = 1, na.rm = T) +
-    geom_line(aes(y = EB_95L), colour = "black", linetype = 2, na.rm = T) +
-    geom_line(aes(y = EB_95U), colour = "black", linetype = 2, na.rm = T) +
-    labs(x = "year-week", y = "deaths per week", title = paste("Number of deaths, age group:",unique(results4$agegrp.labels)[a+1])) +
-    labs(caption = paste("Black line: baseline, dotted black line: 95% confidence interval",
-                         "Red: Effect of Influenza Activity (IA)",
-                         "Green: Effect of excess temperature (on top of IA)", note, sep = "\n")) +
-    scale_x_continuous(breaks=seq(1, max(results4$wk), 26), labels = unique(results4$yw)[seq(1, max(results4$wk), 26)]) +
-    theme(axis.text.x = element_text(size = 10, angle = 90),
-          axis.line = element_line(colour = "black", size = 0.6),
-          panel.background = element_rect(fill = NA),
-          panel.grid.major = element_line(colour = "grey90"),
-          plot.title = element_text(hjust = 0.5, vjust=2),
-          plot.caption = element_text(hjust = 0.5, vjust=2))
-  
-  ggsave(paste0(outdir, "/deaths_agegroup_", a, "_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
-      width = 40, height = 20, units = "cm")
+  png(paste0(outdir, "/deaths_agegroup_", a, "_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=800, res=130)
+  par(mar=c(10,4,3,2))
+  plotDeaths(a, mortality=FALSE)
+  dev.off()
 }
 
 if (population) {
-  results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")] <- 
-      100000 * results4[,c("deaths","EB","EB_95L","EB_95U","EIAET","EIA")] / results4[,"N"]
-  ggplot(data = results4, aes(wk,EB)) +
-    geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
-    geom_line(aes(y = EIAET), colour = "darkgreen", na.rm = T) +
-    geom_line(aes(y = EIA), colour = "red", na.rm = T) +
-    geom_line(aes(y = EB), colour = "black", linetype = 1, na.rm = T) +
-    geom_line(aes(y = EB_95L), colour = "black", linetype = 2, na.rm = T) +
-    geom_line(aes(y = EB_95U), colour = "black", linetype = 2, na.rm = T) +
-    labs(x = "year-week", y = "deaths / 100.000 per week", title = "Mortality by age group") +
-    labs(caption = paste("Black line: baseline, dotted black line: 95% confidence interval",
-                         "Red: Effect of Influenza Activity (IA)",
-                         "Green: Effect of excess temperature (on top of IA)", note, sep = "\n")) +
-    scale_x_continuous(breaks=seq(1, max(results4$wk), 26), labels = unique(results4$yw)[seq(1, max(results4$wk), 26)]) +
-    theme(axis.text.x = element_text(size = 10, angle = 90),
-          axis.line = element_line(colour = "black", size = 0.6),
-          panel.background = element_rect(fill = NA),
-          panel.grid.major = element_line(colour = "grey90"),
-          plot.title = element_text(hjust = 0.5, vjust=2),
-          plot.caption = element_text(hjust = 0.5, vjust=2)) +
-    facet_wrap( ~ agegrp.labels, nrow = 5, scales = "free_y")
-  ggsave(paste0(outdir,"/mr_agegroups_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
-    width = 20, height = 30, units = "cm")
-  
+  png(paste0(outdir,"/mr_agegroups_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=1600, res=130)
+  plotDeathsMultiple(mortality=FALSE)
+  dev.off()  
   for (a in 0:4) {
-    ggplot(data = results4[(results4$agegrp==a),], aes(wk,EB)) +
-      geom_ribbon(aes(x=wk, ymax=deaths, ymin=EB), fill="gray", alpha=.5, na.rm = T) +
-      geom_line(aes(y = EIAET), colour = 'darkgreen', na.rm = T) +
-      geom_line(aes(y = EIA), colour = 'red', na.rm = T) +
-      geom_line(aes(y = EB), colour = "black", linetype = 1, na.rm = T) +
-      geom_line(aes(y = EB_95L), colour = "black", linetype = 2, na.rm = T) +
-      geom_line(aes(y = EB_95U), colour = "black", linetype = 2, na.rm = T) +
-      labs(x = "year-week", y = "deaths / 100.000 per week", title = paste("Mortality, age group:",unique(results4$agegrp.labels)[a+1])) +
-      labs(caption = paste("Black line: baseline, dotted black line: 95% confidence interval",
-                           "Red: Effect of Influenza Activity (IA)",
-                           "Green: Effect of excess temperature (on top of IA)", note, sep = "\n")) +
-      scale_x_continuous(breaks=seq(1, max(results4$wk), 26), labels = unique(results4$yw)[seq(1, max(results4$wk), 26)]) +
-      theme(axis.text.x = element_text(size = 10, angle = 90),
-            axis.line = element_line(colour = "black", size = 0.6),
-            panel.background = element_rect(fill = NA),
-            panel.grid.major = element_line(colour = "grey90"),
-            plot.title = element_text(hjust = 0.5, vjust=2),
-            plot.caption = element_text(hjust = 0.5, vjust=2))
-    ggsave(paste0(outdir,"/mr_agegroup", a, "_v4", ifelse(IArest, "_IArestricted", ""), ".png"), 
-        width = 20, height = 30, units = "cm")
+    png(paste0(outdir,"/mr_agegroup", a, "_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=800, res=130)
+    par(mar=c(10,4,3,2))
+    plotDeaths(a, mortality=TRUE)
+    dev.off()
   }
 }
 rm(results4, a, note)

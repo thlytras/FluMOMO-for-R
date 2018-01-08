@@ -1,7 +1,4 @@
-### Graphs - cumulated ###
-#install.packages("ggplot2")
-require(ggplot2, quietly=T)
-
+# ## Graphs - cumulated ##
 
 results4 <- read.table(
       paste0(outdir, "/", country, "_output_v4", ifelse(IArest, "_IArestricted", ""), ".csv"), 
@@ -48,7 +45,7 @@ plotCumulSingle <- function(a, mortality=FALSE, lwd=2, ylab=NULL) {
 
 
 plotCumulMultiple <- function(mortality=FALSE, lwd=2, ylab=NULL) {
-  par(mfrow=c(5,1), oma=c(4,3,2,0))
+  par(mfrow=c(5,1), oma=c(6,3,2,0))
   for (a in 0:4) {
     par(mar=c(3,2,3,2))
     plotCumulSingle(a, mortality, ylab=NA)
@@ -61,7 +58,7 @@ plotCumulMultiple <- function(mortality=FALSE, lwd=2, ylab=NULL) {
   legend("bottom", legend=rev(levels(out$season)),
     lty = c("solid", rep("dotted", length(levels(out$season))-1)),
     col = pal[1:length(levels(out$season))], lwd=2, cex=1.2,
-    bty="n", horiz=TRUE, xpd=NA, inset=c(0,-0.5))
+    bty="n", horiz=TRUE, xpd=NA, inset=c(0,-0.59))
 }
 
 
@@ -85,11 +82,11 @@ for (s in c("summer","winter","year")) {
       out$season <- factor(out$year)
     }
     out <- out[with(out, order(agegrp, wk)),]
-    png(paste0(outdir,"/cumulated_",t,"_deaths_agegroups_",s,"_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=1800, res=130)
+    png(paste0(outdir,"/cumulated_",t,"_deaths_agegroups_",s,"_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=1600, res=130)
     plotCumulMultiple()
     dev.off()
     if (population) {
-      png(paste0(outdir,"/cumulated_",t,"_mr_agegroups_",s,"_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=1800, res=130)
+      png(paste0(outdir,"/cumulated_",t,"_mr_agegroups_",s,"_v4", ifelse(IArest, "_IArestricted", ""), ".png"), width=1200, height=1600, res=130)
       plotCumulMultiple(mortality=TRUE)
       dev.off()
     }

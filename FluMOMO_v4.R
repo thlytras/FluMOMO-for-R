@@ -1,5 +1,5 @@
 # Install required packages (if not already installed)
-# install.packages(c("readstata13","ggplot2"))
+# install.packages("readstata13")
 
 
 # Clear enviromnet i.e. delete all data and variabels
