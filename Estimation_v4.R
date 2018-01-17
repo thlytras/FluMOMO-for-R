@@ -60,7 +60,7 @@ deaths <- deaths[order(deaths$agegrp,deaths$year,deaths$week),]
 
 # ** START: Temperature data **
 ET <- read.dta13(paste0(indir,"/daily.dta"), nonint.factors=TRUE)[,c("date","pop3","nuts3","temp")]
-ET[is.na(ET$pop3)]$pop3 <- 1
+ET[is.na(ET$pop3), "pop3"] <- 1
 ET <- ET[order(ET$date),]  # Ordering speeds summarizing a bit
 ET <- aggregate(cbind(temp, pop3) ~ nuts3 + date, data=ET, FUN = mean)
 ET$pop3.sum <- with(ET, tapply(pop3, date, sum))[as.character(ET$date)]
