@@ -30,7 +30,7 @@ with(ET, {
     lty="solid", col=c("black", "red", "blue"), lwd=2,
     horiz=TRUE, inset=c(0,-0.39), xpd=NA, bty="n", cex=1)
   legend("bottom", c("observed temperature", "extreme heat", "extreme cold"),
-    col=c("black", do.call(rgb, c(as.list(col2rgb("blue")/255), alpha=0.5)), do.call(rgb, c(as.list(col2rgb("red")/255), alpha=0.5))), pch=c(19,15,15),
+    col=c("black", do.call(rgb, c(as.list(col2rgb("red")/255), alpha=0.5)), do.call(rgb, c(as.list(col2rgb("blue")/255), alpha=0.5))), pch=c(19,15,15),
     horiz=TRUE, inset=c(0,-0.46), xpd=NA, bty="n", cex=1, pt.cex=c(1,2,2))  
 })
 dev.off()
